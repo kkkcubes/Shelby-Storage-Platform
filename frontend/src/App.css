@@ -1,0 +1,295 @@
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+
+function App() {
+  const [video, setVideo] = useState(null);
+  const [videos, setVideos] = useState([]);
+  const [currentVideo, setCurrentVideo] = useState(null);
+
+  const [page, setPage] = useState("explorer");
+  const [wallet, setWallet] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(true);
+
+  /* CONNECT WALLET */
+  const connectWallet = async () => {
+    try {
+      if (!window.ethereum) return alert("Install MetaMask");
+
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+
+      setWallet(accounts[0]);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  /* FETCH VIDEOS */
+  const fetchVideos = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/videos-list");
+      setVideos(res.data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchVideos();
+  }, []);
+
+  /* UPLOAD */
+  const handleUpload = async () => {
+    if (!video) return alert("Select file");
+
+    const formData = new FormData();
+    formData.append("video", video);
+
+    try {
+      await axios.post("http://localhost:5000/upload", formData);
+      setVideo(null);
+      fetchVideos();
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  return (
+    <div style={styles.container}>
+      
+      {/* SIDEBAR */}
+      <div style={{ ...styles.sidebar, width: menuOpen ? 220 : 70 }}>
+        
+        {/* TOP SECTION */}
+        <div>
+          <div style={styles.topBar}>
+            <button onClick={() => setMenuOpen(!menuOpen)} style={styles.menuBtn}>
+              ☰
+            </button>
+            {menuOpen && <h2 style={styles.logo}>ShelbyX</h2>}
+          </div>
+
+          {/* WALLET */}
+          <button style={styles.walletBtn} onClick={connectWallet}>
+            {wallet
+              ? `🟢 ${wallet.slice(0, 6)}...${wallet.slice(-4)}`
+              : "🔌 Connect Wallet"}
+          </button>
+        </div>
+
+        {/* MENU */}
+        <div>
+          {menuOpen && <p style={styles.menuTitle}>MENU</p>}
+
+          <div
+            style={styles.menuItem(page === "library")}
+            onClick={() => setPage("library")}
+          >
+            📁 {menuOpen && "Assets"}
+          </div>
+
+          <div
+            style={styles.menuItem(page === "upload")}
+            onClick={() => setPage("upload")}
+          >
+            ⬆ {menuOpen && "Upload"}
+          </div>
+
+          <div
+            style={styles.menuItem(page === "explorer")}
+            onClick={() => setPage("explorer")}
+          >
+            ☁ {menuOpen && "Vault"}
+          </div>
+
+          <div
+            style={styles.menuItem(page === "settings")}
+            onClick={() => setPage("settings")}
+          >
+            ⚙ {menuOpen && "Settings"}
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN */}
+      <div style={styles.main}>
+        <h1 style={styles.title}>🚀 Shelby Cloud</h1>
+
+        {page === "explorer" && (
+          <>
+            {/* CLEAN FILE INPUT */}
+            <div style={styles.uploadBox}>
+              <label style={styles.fileLabel}>
+                {video ? video.name : "📂 Select Video"}
+                <input
+                  type="file"
+                  onChange={(e) => setVideo(e.target.files[0])}
+                  style={{ display: "none" }}
+                />
+              </label>
+
+              <button onClick={handleUpload} style={styles.uploadBtn}>
+                Upload
+              </button>
+            </div>
+
+            {/* VIDEO LIST */}
+            <div style={styles.videoList}>
+              {videos.map((vid, i) => (
+                <div
+                  key={i}
+                  style={styles.card}
+                  onClick={() => setCurrentVideo(vid)}
+                >
+                  🎥 File {i + 1}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {page === "library" && <h2>📁 Your Assets</h2>}
+        {page === "upload" && <h2>⬆ Upload Center</h2>}
+        {page === "settings" && <h2>⚙ Settings</h2>}
+      </div>
+
+      {/* VIDEO PLAYER (FIXED) */}
+      {currentVideo && currentVideo !== "" && (
+        <div
+          style={{
+            ...styles.player,
+            left: menuOpen ? "220px" : "70px",
+          }}
+        >
+          <video controls style={{ width: 400 }}>
+            <source src={currentVideo} type="video/mp4" />
+          </video>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* STYLES */
+const styles = {
+  container: {
+    display: "flex",
+    height: "100vh",
+    background: "linear-gradient(135deg, #0f172a, #020617)",
+    color: "#e2e8f0",
+    fontFamily: "Segoe UI",
+  },
+
+  sidebar: {
+    background: "#020617",
+    padding: "15px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between", // IMPORTANT FIX
+    height: "100vh",
+  },
+
+  topBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  },
+
+  menuBtn: {
+    background: "#1e293b",
+    color: "white",
+    border: "none",
+    padding: "6px 10px",
+    cursor: "pointer",
+    borderRadius: "6px",
+  },
+
+  logo: {
+    color: "#38bdf8",
+    fontWeight: "bold",
+  },
+
+  menuTitle: {
+    fontSize: "12px",
+    color: "#64748b",
+  },
+
+  menuItem: (active) => ({
+    padding: "10px",
+    margin: "8px 0",
+    borderRadius: "8px",
+    cursor: "pointer",
+    background: active ? "#1e293b" : "transparent",
+  }),
+
+  walletBtn: {
+    marginTop: "15px",
+    width: "100%",
+    background: "linear-gradient(135deg, #22c55e, #4ade80)",
+    color: "black",
+    border: "none",
+    padding: "12px",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontWeight: "bold",
+    fontSize: "14px",
+  },
+
+  main: {
+    flex: 1,
+    padding: "20px",
+  },
+
+  title: {
+    fontSize: "28px",
+    color: "#38bdf8",
+  },
+
+  uploadBox: {
+    display: "flex",
+    gap: "10px",
+    marginBottom: "20px",
+    alignItems: "center",
+  },
+
+  fileLabel: {
+    padding: "10px 15px",
+    background: "#1e293b",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+
+  uploadBtn: {
+    background: "linear-gradient(135deg, #3b82f6, #6366f1)",
+    color: "white",
+    border: "none",
+    padding: "10px 15px",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+
+  videoList: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill,200px)",
+    gap: "15px",
+  },
+
+  card: {
+    background: "#1e293b",
+    padding: "20px",
+    borderRadius: "12px",
+    cursor: "pointer",
+  },
+
+  player: {
+    position: "fixed",
+    bottom: 0,
+    right: 0,
+    background: "#020617",
+    padding: "10px",
+    borderTop: "1px solid #1e293b",
+  },
+};
+
+export default App;
